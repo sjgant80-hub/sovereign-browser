@@ -1,0 +1,14 @@
+{
+  "name": "sovereign-browser",
+  "version": "0.1.0",
+  "description": "A sovereign browser-agent: your governed AI operating any site alongside you — one owned agent instead of twenty rented per-app AIs. Governor-first.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/governor.test.mjs test/envelope.test.mjs",
+    "demo": "node demo/saas-tax.mjs",
+    "gate": "node konomi/run-gate.mjs"
+  },
+  "keywords": ["browser-agent", "computer-use", "sovereign", "governor", "proof-of-play"],
+  "engines": { "node": ">=20" }
+}

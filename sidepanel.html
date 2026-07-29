@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>si-didy rail</title>
+<style>
+  :root {
+    --bg: #0d0f13; --panel: #151922; --line: #232a36; --ink: #e6edf3; --dim: #8b98a9;
+    --allow: #3fb950; --confirm: #d29922; --block: #f85149; --accent: #58a6ff;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-size: 12px; line-height: 1.5; }
+  header { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  header h1 { font-size: 13px; margin: 0; letter-spacing: .04em; }
+  header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+  .section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .label { color: var(--dim); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; margin-bottom: 8px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+           padding: 6px 10px; border-radius: 6px; }
+  button:hover { border-color: var(--accent); }
+  .kill { width: 100%; padding: 10px; font-weight: 600; letter-spacing: .05em; }
+  .kill.armed { background: #1f2a1f; border-color: var(--allow); color: var(--allow); }
+  .kill.halted { background: #2a1f1f; border-color: var(--block); color: var(--block); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+  .perm { display: flex; gap: 4px; }
+  .perm button { padding: 3px 8px; font-size: 11px; }
+  .perm button[aria-pressed="true"] { border-color: var(--accent); background: #182030; color: var(--accent); }
+  .meter { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .meter > span { display: block; height: 100%; background: var(--accent); }
+  .pending { border: 1px solid var(--confirm); border-radius: 6px; padding: 8px; margin-bottom: 8px; background: #201a10; }
+  .pending .k { color: var(--confirm); font-weight: 600; }
+  .pending .acts { display: flex; gap: 6px; margin-top: 6px; }
+  .approve { border-color: var(--allow); color: var(--allow); }
+  .deny { border-color: var(--block); color: var(--block); }
+  .log { max-height: 220px; overflow-y: auto; font-size: 11px; }
+  .log .e { display: grid; grid-template-columns: 14px 1fr auto; gap: 6px; padding: 2px 0; border-bottom: 1px solid #1a1f28; }
+  .v-allow { color: var(--allow); } .v-confirm { color: var(--confirm); } .v-block { color: var(--block); }
+  .muted { color: var(--dim); }
+  .demo { display: grid; gap: 6px; }
+  .demo input, .demo select { font: inherit; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px; }
+</style>
+</head>
+<body>
+  <header><span class="dot" id="statusDot"></span><h1>si-didy rail</h1><span class="muted" id="ks">—</span></header>
+
+  <div class="section">
+    <button class="kill" id="killBtn">— — —</button>
+  </div>
+
+  <div class="section">
+    <div class="label">this site · <span id="site" class="muted">—</span></div>
+    <div class="perm" id="perm">
+      <button data-perm="off" aria-pressed="false">off</button>
+      <button data-perm="read" aria-pressed="false">read</button>
+      <button data-perm="act" aria-pressed="false">act</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="label">spend · <span id="spendTxt" class="muted">—</span></div>
+    <div class="meter"><span id="spendBar" style="width:0%"></span></div>
+  </div>
+
+  <div class="section" id="pendingSection" hidden>
+    <div class="label">awaiting your OK</div>
+    <div id="pending"></div>
+  </div>
+
+  <div class="section">
+    <div class="label">propose an action (demo the gate)</div>
+    <div class="demo">
+      <select id="op">
+        <option value="read">read the page</option>
+        <option value="click">click element #0</option>
+        <option value="type">type into element #0</option>
+        <option value="navigate">navigate…</option>
+      </select>
+      <input id="arg" placeholder="text / url (for type / navigate)" />
+      <button id="proposeBtn">propose →</button>
+      <div id="proposeOut" class="muted"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="label">audit ledger (tamper-evident)</div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

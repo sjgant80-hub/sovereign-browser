@@ -1,0 +1,7 @@
+[
+  {
+    "mutation": "|| → &&",
+    "snippet": "if (!origin || typeof origin !== 'string') return 'off';",
+    "reason": "reviewed-equivalent: this is a redundant defensive guard. For every valid origin (a non-empty registrable-domain string) both `||` and `&&` skip the early return and fall through to the permTable lookup; for every invalid/falsy origin both paths resolve to 'off' (either via the early return or the lookup returning undefined). No reachable input changes the result, and neither variant throws (verified by the fuzz gate). Verdict logic that depends on lookupPerm is separately pinned by the deny-by-default tests (I2/I12)."
+  }
+]

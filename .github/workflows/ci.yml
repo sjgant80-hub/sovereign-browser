@@ -1,0 +1,20 @@
+name: proof-of-play
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Kernel tests (node --test, zero deps)
+        run: npm test
+      - name: Proof-of-play mutation + fuzz gate (must be CLEAN)
+        run: npm run gate
+      - name: SaaS-tax demo (audit chain must verify)
+        run: npm run demo
