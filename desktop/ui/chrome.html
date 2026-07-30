@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sovereign Browser</title>
+<link rel="stylesheet" href="chrome.css" />
+</head>
+<body>
+  <!-- top chrome: tabs row + nav/address row (fixed, height must match CHROME_H in main.js) -->
+  <div class="topbar">
+    <div class="tabs" id="tabs"></div>
+    <div class="navrow">
+      <button class="nav" id="back" title="Back">‹</button>
+      <button class="nav" id="forward" title="Forward">›</button>
+      <button class="nav" id="reload" title="Reload">⟳</button>
+      <input id="addr" class="addr" placeholder="Search or enter address" spellcheck="false" />
+      <button class="nav" id="newtab" title="New tab">＋</button>
+      <span class="brand">🛡️ sovereign</span>
+    </div>
+  </div>
+
+  <!-- right rail: the governed agent panel -->
+  <aside class="rail">
+    <div class="railhead"><span class="dot" id="dot"></span> si-didy rail <span class="ks" id="ks">—</span></div>
+
+    <button class="kill" id="killBtn">— — —</button>
+
+    <div class="sec">
+      <div class="lbl">agent goal</div>
+      <input id="goal" placeholder="e.g. find the returns policy" />
+      <div class="btnrow">
+        <button id="runBtn" class="grow">▶ run</button>
+        <button id="stopBtn">■</button>
+        <button id="keyBtn" title="set model key (BYOK)">⚙</button>
+      </div>
+      <div id="agentOut" class="feed"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">this site · <span id="site" class="dim">—</span></div>
+      <div class="perm" id="perm">
+        <button data-perm="off">off</button>
+        <button data-perm="read">read</button>
+        <button data-perm="act">act</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">spend · <span id="spendTxt" class="dim">—</span></div>
+      <div class="meter"><span id="spendBar"></span></div>
+    </div>
+
+    <div class="sec" id="pendSec" hidden>
+      <div class="lbl">awaiting your OK</div>
+      <div id="pending"></div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">audit ledger</div>
+      <div class="log" id="log"></div>
+    </div>
+  </aside>
+
+  <script src="chrome.js"></script>
+</body>
+</html>

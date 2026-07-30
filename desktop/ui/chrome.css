@@ -1,0 +1,54 @@
+:root{
+  --bg:#0a0d13; --panel:#131926; --line:#212b3d; --ink:#e9eef7; --mid:#aab6c8; --dim:#7c8a9e;
+  --teal:#38d6c6; --teal-dim:#1d6f68; --allow:#42c766; --confirm:#e0a92a; --block:#f2584c;
+  --mono: ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --rail:340px; --chrome:96px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;user-select:none}
+/* top chrome */
+.topbar{position:fixed;top:0;left:0;right:0;height:var(--chrome);background:linear-gradient(180deg,#0e1219,#0a0d13);border-bottom:1px solid var(--line);z-index:5}
+.tabs{display:flex;gap:4px;padding:8px 10px 0;height:44px;overflow-x:auto}
+.tab{display:flex;align-items:center;gap:8px;max-width:200px;padding:7px 12px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:var(--panel);color:var(--mid);font-size:12px;white-space:nowrap;cursor:default}
+.tab.active{background:#182234;color:var(--ink);border-color:var(--teal-dim)}
+.tab .t{overflow:hidden;text-overflow:ellipsis}
+.tab .x{color:var(--dim);cursor:pointer}
+.tab .x:hover{color:var(--block)}
+.navrow{display:flex;align-items:center;gap:6px;padding:8px 12px}
+.nav{font:inherit;font-size:15px;width:32px;height:32px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;cursor:pointer}
+.nav:hover{border-color:var(--teal)}
+.addr{flex:1;height:32px;padding:0 12px;border:1px solid var(--line);background:#070a0f;color:var(--ink);border-radius:8px;font-family:var(--mono);font-size:12px}
+.addr:focus{outline:none;border-color:var(--teal)}
+.brand{font-family:var(--mono);font-size:11px;color:var(--dim);padding:0 6px}
+/* right rail */
+.rail{position:fixed;top:var(--chrome);right:0;bottom:0;width:var(--rail);background:var(--bg);border-left:1px solid var(--line);overflow-y:auto;z-index:5}
+.railhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+.railhead .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.railhead .ks{margin-left:auto;color:var(--dim);font-size:10px}
+.sec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 10px;border-radius:7px}
+button:hover{border-color:var(--teal)}
+.kill{width:calc(100% - 28px);margin:12px 14px 0;padding:10px;font-weight:600;letter-spacing:.05em}
+.kill.armed{background:#12210f;border-color:var(--allow);color:var(--allow)}
+.kill.halted{background:#210f0f;border-color:var(--block);color:var(--block)}
+input{font:inherit;background:#070a0f;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%}
+input:focus{outline:none;border-color:var(--teal)}
+.btnrow{display:flex;gap:6px;margin-top:6px}
+.grow{flex:1}
+.feed{font-family:var(--mono);font-size:11px;color:var(--mid);white-space:pre-wrap;max-height:130px;overflow-y:auto;margin-top:8px;line-height:1.6}
+.perm{display:flex;gap:4px}
+.perm button{padding:4px 10px;font-size:11px}
+.perm button[aria-pressed="true"]{border-color:var(--teal);background:#132030;color:var(--teal)}
+.meter{height:7px;background:var(--line);border-radius:5px;overflow:hidden}
+.meter>span{display:block;height:100%;width:0;background:var(--teal)}
+.dim{color:var(--dim)}
+.pending{border:1px solid var(--confirm);border-radius:8px;padding:9px;margin-bottom:8px;background:#1c160a}
+.pending .k{color:var(--confirm);font-weight:600}
+.pending .acts{display:flex;gap:6px;margin-top:7px}
+.approve{border-color:var(--allow);color:var(--allow)}
+.deny{border-color:var(--block);color:var(--block)}
+.log{font-family:var(--mono);font-size:10.5px;max-height:200px;overflow-y:auto;line-height:1.7}
+.log .e{display:flex;gap:6px;border-bottom:1px solid #161d29;padding:2px 0}
+.va{color:var(--allow)}.vc{color:var(--confirm)}.vb{color:var(--block)}

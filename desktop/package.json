@@ -1,0 +1,14 @@
+{
+  "name": "sovereign-browser-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The sovereign 'own browser' — Electron wraps Chromium; the shared Governor host drives it. Run: npm install && npm start",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node smoke.js"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}

@@ -20,3 +20,5 @@ jobs:
         run: npm run demo
       - name: Agent-loop demo (every step gated, deterministic)
         run: npm run demo:agent
+      - name: Desktop wiring smoke (shared page bridge, no Electron/GUI)
+        run: node desktop/smoke.js

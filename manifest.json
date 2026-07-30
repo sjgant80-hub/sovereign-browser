@@ -8,7 +8,7 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "side_panel": { "default_path": "sidepanel.html" },
   "content_scripts": [
-    { "matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle" }
+    { "matches": ["<all_urls>"], "js": ["page/agent-dom.js", "content.js"], "run_at": "document_idle" }
   ],
   "action": { "default_title": "Open the si-didy rail" }
 }

@@ -23,6 +23,12 @@ signed desktop Electron/Tauri app is a real build-toolchain job (native builds,
 code-signing, auto-update, per-OS packaging) — deliberately out of scope for the
 *governed-core* repo, whose job is to be the correct, safe, witnessable brain.
 
+**This is now built** — see [`desktop/`](../desktop): a real Electron app that bundles
+Chromium, renders any site in a `WebContentsView`, draws the tabs + address bar + the
+agent rail, and drives the page via the shared `page/agent-dom.js` over
+`webContents.executeJavaScript` — wired to the same `host/governor-host.mjs` the
+extension uses. Run it with `cd desktop && npm install && npm start`.
+
 The wrap is standard and small once you want the desktop app:
 
 ```js

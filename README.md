@@ -59,10 +59,10 @@ The verdict is one pure function composing seven stages, most-restrictive-wins:
 `killswitch › event-class › prohibited › per-site-perm › provenance-bump › cap › kappa`.
 Full spec + the 15 bypass classes it defends: [`GOVERNOR.md`](GOVERNOR.md).
 
-**Gate status** — 95 tests; `kernel/governor.mjs` 79/80 mutants killed (+1 reviewed
-equivalent) **CLEAN**, `kernel/envelope.mjs` 18/18 **CLEAN**, `agent/tools.mjs` 25/25
-**CLEAN**; fuzz battery: the safety kernel never throws on garbage input (I24).
-`npm run gate` reproduces it.
+**Gate status** — 108 tests; mutation gate CLEAN on every pure module —
+`kernel/governor.mjs` 79/80 (+1 reviewed equivalent), `kernel/envelope.mjs` 18/18,
+`agent/tools.mjs` 25/25, `host/observe.mjs` 21/21; fuzz battery: the safety kernel
+never throws on garbage input (I24). `npm run gate` reproduces it.
 
 **Hardened by adversarial review.** The design came from a three-lens threat-model
 panel; the implementation was then attacked by a five-lens code review that
@@ -79,8 +79,9 @@ named regression test. Details: [`GOVERNOR.md`](GOVERNOR.md).
 | LLM agent loop (`agent/`) | **real** — SEE→THINK→PROPOSE→ACT, pure core witness-gated, BYOK model client |
 | SEE→ACT contract (extension `content.js` / `bridge/cdp-bridge.js`) | **real** — content script in your Chrome, or a CDP client |
 | SaaS-tax demo (`demo/saas-tax.mjs`) | **real, runnable** — governed multi-site task + the money math |
-| Rendering engine | **wrapped, not written** — Chromium over CDP / bundled by an Electron-Tauri shell |
-| Desktop packaging | out of scope for the governed-core repo (see `shell/WRAP.md`) |
+| Desktop "own browser" (`desktop/`) | **real Electron app** — bundles Chromium, tabs + address bar + rail, drives pages via the shared bridge |
+| Rendering engine | **wrapped, not written** — Chromium, driven by the extension or the Electron app |
+| Signed/packaged installers | out of scope for the governed-core repo (run from source; see `desktop/`) |
 
 ## The honest wall — wrap, don't write
 
@@ -130,6 +131,24 @@ npm run demo:agent  # the full SEE→THINK→PROPOSE→ACT loop, deterministic
 
 **To try the extension live:** `chrome://extensions` → Load unpacked → this folder →
 open the side panel, set your model key (⚙), grant a site `act`, type a goal, `▶ run`.
+
+## Two transports, one Governor
+
+The governed brain lives in **`host/governor-host.mjs`** (shared) and only ever gets
+its hands wired to a transport. This is the transport-agnostic claim made concrete:
+
+- **Extension** (`background.js`) — a thin adapter: SEE/ACT via `chrome.tabs` to
+  `content.js`, which runs the shared `page/agent-dom.js`.
+- **Desktop "own browser"** (`desktop/`) — an **Electron app that bundles Chromium**:
+  tabs + address bar + the rail, each tab a `WebContentsView`, driven by the *same*
+  `page/agent-dom.js` injected over `webContents.executeJavaScript`. Same host, same
+  Governor, same audit ledger.
+
+```bash
+cd desktop && npm install && npm start   # launches the sovereign browser
+```
+
+`node desktop/smoke.js` verifies the desktop wiring headlessly (no GUI) and runs in CI.
 
 ## Estate lineage
 
