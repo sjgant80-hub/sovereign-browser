@@ -14,7 +14,9 @@ const { pathToFileURL } = require('url');
 
 const CHROME_H = 96;    // top chrome bar (tabs + address row)
 const RAIL_W = 340;     // right-hand agent rail
-const ROOT = path.join(__dirname, '..');
+// Where the shared modules live: sibling dirs in dev (repo root), copied next to
+// main.js in a packaged build (electron-builder maps ../kernel -> kernel, etc.).
+const ROOT = app.isPackaged ? __dirname : path.join(__dirname, '..');
 
 let win = null, host = null, bridge = null, Store = null;
 const tabs = new Map();                 // id -> { view, url, title }
@@ -33,7 +35,7 @@ async function boot() {
   // the kernel/host/loop are ESM; import them dynamically from this CJS main
   const hostMod = await import(pathToFileURL(path.join(ROOT, 'host', 'governor-host.mjs')).href);
   const llmMod = await import(pathToFileURL(path.join(ROOT, 'agent', 'llm.mjs')).href);
-  bridge = require('./bridge');
+  bridge = require('./bridge')(path.join(ROOT, 'page', 'agent-dom.js'));
   Store = makeStore();
 
   host = hostMod.makeHost({

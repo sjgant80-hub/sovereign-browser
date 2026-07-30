@@ -1,0 +1,62 @@
+name: release
+# Build SIGNED installers for macOS / Windows / Linux and attach them to a GitHub
+# Release. Triggered by pushing a version tag (e.g. v0.1.0), or manually.
+#
+# Signing needs YOUR certificates, provided as repo secrets — nothing is hardcoded.
+# Without the secrets set, the build still runs and produces UNSIGNED installers
+# (useful for testing the pipeline); with them, the artifacts are properly signed
+# and (on macOS) notarized. See desktop/SIGNING.md.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            build: npm run dist:mac
+          - os: windows-latest
+            build: npm run dist:win
+          - os: ubuntu-latest
+            build: npm run dist:linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate the app icon
+        run: npm run icon
+      - name: Install
+        run: npm install
+      - name: Build + sign installers
+        run: ${{ matrix.build }}
+        env:
+          # electron-builder publishes the artifacts to the GitHub Release
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code-signing cert (base64 .p12) + notarization credentials
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode cert (base64 .pfx) + password
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+          if-no-files-found: ignore

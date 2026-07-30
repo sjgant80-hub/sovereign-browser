@@ -8,8 +8,9 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-// 1) the bridge module loads and reads the shared page script at require-time
-const bridge = require('./bridge');
+// 1) the bridge factory loads and reads the shared page script
+const makeBridge = require('./bridge');
+const bridge = makeBridge(path.join(__dirname, '..', 'page', 'agent-dom.js'));
 assert.equal(typeof bridge.see, 'function', 'bridge.see');
 assert.equal(typeof bridge.act, 'function', 'bridge.act');
 
