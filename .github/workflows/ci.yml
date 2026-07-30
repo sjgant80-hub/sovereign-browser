@@ -18,3 +18,5 @@ jobs:
         run: npm run gate
       - name: SaaS-tax demo (audit chain must verify)
         run: npm run demo
+      - name: Agent-loop demo (every step gated, deterministic)
+        run: npm run demo:agent

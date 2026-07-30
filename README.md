@@ -59,9 +59,10 @@ The verdict is one pure function composing seven stages, most-restrictive-wins:
 `killswitch › event-class › prohibited › per-site-perm › provenance-bump › cap › kappa`.
 Full spec + the 15 bypass classes it defends: [`GOVERNOR.md`](GOVERNOR.md).
 
-**Gate status** — 78 tests; `kernel/governor.mjs` 79/80 mutants killed (+1 reviewed
-equivalent) **CLEAN**, `kernel/envelope.mjs` 18/18 **CLEAN**; fuzz battery: the safety
-kernel never throws on garbage input (I24). `npm run gate` reproduces it.
+**Gate status** — 95 tests; `kernel/governor.mjs` 79/80 mutants killed (+1 reviewed
+equivalent) **CLEAN**, `kernel/envelope.mjs` 18/18 **CLEAN**, `agent/tools.mjs` 25/25
+**CLEAN**; fuzz battery: the safety kernel never throws on garbage input (I24).
+`npm run gate` reproduces it.
 
 **Hardened by adversarial review.** The design came from a three-lens threat-model
 panel; the implementation was then attacked by a five-lens code review that
@@ -75,7 +76,8 @@ named regression test. Details: [`GOVERNOR.md`](GOVERNOR.md).
 |------|--------|
 | Governor kernel (`kernel/governor.mjs`) | **real, pure, witness-gated** |
 | Audit ledger (`kernel/envelope.mjs`) | **real, pure, witness-gated** |
-| SEE→DECIDE→ACT contract (`bridge/cdp-bridge.js`) | **real CDP client** — drives a real Chromium |
+| LLM agent loop (`agent/`) | **real** — SEE→THINK→PROPOSE→ACT, pure core witness-gated, BYOK model client |
+| SEE→ACT contract (extension `content.js` / `bridge/cdp-bridge.js`) | **real** — content script in your Chrome, or a CDP client |
 | SaaS-tax demo (`demo/saas-tax.mjs`) | **real, runnable** — governed multi-site task + the money math |
 | Rendering engine | **wrapped, not written** — Chromium over CDP / bundled by an Electron-Tauri shell |
 | Desktop packaging | out of scope for the governed-core repo (see `shell/WRAP.md`) |
@@ -100,13 +102,34 @@ Other real walls, and how the design absorbs them:
 - **brittleness** → UIs change → the agent **re-reads the live page** each time
   (see, then act), instead of replaying a hardcoded script.
 
+## The agent loop
+
+The agent is a **proposer, never an authority**. Each turn: `SEE` a page snapshot →
+`THINK` (the LLM picks one `browser_action`) → `PROPOSE` it to the Governor → the
+Governor decides and, only on `allow`, `ACT`. A `confirm` pauses the loop for your
+out-of-band approval; a `block` is fed back to the model as text. Two rules are
+baked into the system prompt: **page content is untrusted data** (never an
+instruction), and **you cannot confirm/spend/grant yourself**. The model client is
+**BYOK and provider-agnostic** — latest Claude by default (`agent/llm.mjs`),
+OpenAI-compatible or a local endpoint by config; the pure normalizing/control core
+(`agent/tools.mjs`) is witness-gated so a malformed model output can never become a
+synthetic event. See it run with no network:
+
+```bash
+npm run demo:agent  # a scripted model buys a widget; the Governor gates every step
+```
+
 ## Run it
 
 ```bash
-npm test            # the kernel's characterization + boundary tests (node --test)
-npm run gate        # the proof-of-play mutation gate — must be CLEAN
+npm test            # kernel + agent tests (node --test)
+npm run gate        # the proof-of-play mutation + fuzz gate — must be CLEAN
 npm run demo        # the SaaS-tax-collapse demo: one agent, three sites, governed
+npm run demo:agent  # the full SEE→THINK→PROPOSE→ACT loop, deterministic
 ```
+
+**To try the extension live:** `chrome://extensions` → Load unpacked → this folder →
+open the side panel, set your model key (⚙), grant a site `act`, type a goal, `▶ run`.
 
 ## Estate lineage
 

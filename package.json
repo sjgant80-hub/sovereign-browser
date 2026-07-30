@@ -5,8 +5,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "test": "node --test test/governor.test.mjs test/envelope.test.mjs",
+    "test": "node --test test/governor.test.mjs test/envelope.test.mjs test/agent.test.mjs",
     "demo": "node demo/saas-tax.mjs",
+    "demo:agent": "node demo/agent-loop.mjs",
     "gate": "node konomi/run-gate.mjs"
   },
   "keywords": ["browser-agent", "computer-use", "sovereign", "governor", "proof-of-play"],

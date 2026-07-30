@@ -8,8 +8,8 @@
 import { runMutations, fuzz } from './witness.mjs';
 import { verdict, classifyAction, checkCap, lookupPerm } from '../kernel/governor.mjs';
 
-const TEST = ['node', '--test', 'test/governor.test.mjs', 'test/envelope.test.mjs'];
-const FILES = ['kernel/governor.mjs', 'kernel/envelope.mjs'];
+const TEST = ['node', '--test', 'test/governor.test.mjs', 'test/envelope.test.mjs', 'test/agent.test.mjs'];
+const FILES = ['kernel/governor.mjs', 'kernel/envelope.mjs', 'agent/tools.mjs'];
 
 let clean = true;
 

@@ -84,6 +84,24 @@ document.addEventListener('click', async (ev) => {
   else if (t.dataset.perm) { await send({ cmd: 'setPerm', origin: currentOrigin, perm: t.dataset.perm }); refresh(); }
   else if (t.dataset.consent) { await send({ cmd: 'consent', id: t.dataset.consent }); refresh(); }
   else if (t.dataset.deny) { const p = (await send({ cmd: 'getState' })).pending.find(x => x.id === t.dataset.deny); if (HAS_CHROME) await send({ cmd: 'getState' }); MOCK.pending = (MOCK.pending || []).filter(x => x.id !== t.dataset.deny); refresh(); }
+  else if (t.id === 'runBtn') {
+    const goal = $('goal').value.trim();
+    if (!goal) return;
+    const [tab] = HAS_CHROME && chrome.tabs ? await chrome.tabs.query({ active: true, currentWindow: true }) : [{ id: 0 }];
+    logAgent(`▶ goal: ${goal}`);
+    const r = await send({ cmd: 'run_goal', tabId: tab.id, goal });
+    if (r && r.reason) logAgent(`· ${r.reason}`);
+  }
+  else if (t.id === 'stopBtn') { await send({ cmd: 'stop_goal' }); logAgent('■ stopped'); }
+  else if (t.id === 'keyBtn') {
+    const provider = (prompt('provider: anthropic | openai', 'anthropic') || '').trim();
+    if (!provider) return;
+    const apiKey = prompt(`${provider} API key (stored locally, never leaves your machine except to the model)`);
+    if (!apiKey) return;
+    const model = prompt('model id (blank = provider default)', provider === 'openai' ? 'gpt-4o' : 'claude-sonnet-5') || undefined;
+    await send({ cmd: 'setLLM', config: { provider, apiKey, model } });
+    logAgent(`⚙ ${provider} key set`);
+  }
   else if (t.id === 'proposeBtn') {
     const op = $('op').value, arg = $('arg').value;
     const [tab] = HAS_CHROME && chrome.tabs ? await chrome.tabs.query({ active: true, currentWindow: true }) : [{ id: 0 }];
@@ -94,6 +112,28 @@ document.addEventListener('click', async (ev) => {
   }
 });
 
-if (HAS_CHROME) chrome.runtime.onMessage.addListener((msg) => { if (msg.evt === 'state') render(msg.state); });
+function logAgent(line) {
+  const el = $('agentOut'); if (!el) return;
+  el.textContent = (el.textContent ? el.textContent + '\n' : '') + line;
+  el.scrollTop = el.scrollHeight;
+}
+function showAgent(e) {
+  if (e.type === 'need_key') return logAgent('⚙ set a model key first (⚙ key)');
+  if (e.type === 'start') return logAgent('· thinking…');
+  if (e.type === 'step') {
+    const i = e.intent, v = e.verdict;
+    const mark = v.class === 'allow' ? '✓' : v.class === 'confirm' ? '⏸' : '✗';
+    return logAgent(`${mark} ${i.op}${i.ref != null ? ' #' + i.ref : ''}${i.target ? ' ' + i.target : ''} — ${v.class}${i.rationale ? '  «' + i.rationale + '»' : ''}`);
+  }
+  if (e.type === 'await_consent') return logAgent('⏸ waiting for your approval above…');
+  if (e.type === 'done') return logAgent(`■ done: ${e.intent.done_reason || ''}`);
+  if (e.type === 'end') return logAgent(`— ${e.phase} (${e.steps} steps)`);
+  if (e.type === 'error') return logAgent(`✗ ${e.error}`);
+}
+
+if (HAS_CHROME) chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.evt === 'state') render(msg.state);
+  if (msg.evt === 'agent') showAgent(msg);
+});
 
 (async () => { currentOrigin = await currentTabOrigin(); refresh(); })();

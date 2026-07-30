@@ -16,6 +16,8 @@ import {
   grantConsent, consumeConsent,
 } from './kernel/governor.mjs';
 import { AuditLedger } from './kernel/envelope.mjs';
+import { runAgent } from './agent/loop.mjs';
+import { makeLLM } from './agent/llm.mjs';
 
 // ── governor state (in-memory; perms persisted to chrome.storage) ──────────────
 let gov = initState({ currency: 'GBP', globalCap: 20000 });   // £200 global cap default
@@ -95,7 +97,37 @@ async function consent(id) {
   if (p.descriptor.spend) gov = { ...gov, spend: commitSpend(gov.spend, ledger.seq - 1) };
   gov = consumeConsent(gov, p.hash);                                 // single-use: consent gone after emit
   pending.delete(id);
+  if (activeGoal && activeTabId != null) runGoal({ tabId: activeTabId, goal: activeGoal });  // resume the loop
   return { ok: true };
+}
+
+// ── the agent loop: SEE -> THINK(LLM) -> PROPOSE(Governor) -> ACT ──────────────
+// The loop only PROPOSES; propose() (the Governor) is the sole path to a real event.
+// BYOK: the model config lives in chrome.storage. Pauses at a confirm; consent()
+// resumes it so the agent continues after the user approves in the panel.
+let activeGoal = null, activeTabId = null;
+
+async function llmClient() {
+  const { llmConfig } = await chrome.storage.local.get('llmConfig');
+  if (!llmConfig || !llmConfig.apiKey) return null;      // no key => no autonomy
+  return makeLLM(llmConfig);
+}
+
+async function runGoal({ tabId, goal }) {
+  const llm = await llmClient();
+  if (!llm) { chrome.runtime.sendMessage({ evt: 'agent', type: 'need_key' }).catch(() => {}); return { ok: false, reason: 'set an LLM key in the rail first' }; }
+  activeGoal = goal; activeTabId = tabId;
+  const state = await runAgent({
+    goal, budget: 14,
+    deps: {
+      see: () => tabSee(tabId),
+      llm,
+      propose: (intent) => propose({ tabId, intent }),   // every step gated + audited by the Governor
+      onEvent: (e) => { chrome.runtime.sendMessage({ evt: 'agent', ...e }).catch(() => {}); },
+    },
+  });
+  if (state.phase !== 'awaiting_consent') { activeGoal = null; activeTabId = null; }  // finished/stopped
+  return { ok: true, phase: state.phase };
 }
 
 async function execute(tabId, intent, descriptor) {
@@ -131,6 +163,9 @@ chrome.runtime.onMessage.addListener((msg, _s, reply) => {
                        audit('cap_changed', { origin: msg.origin, cap: msg.cap }); reply(snapshotState()); break; }
       case 'propose': reply(await propose(msg)); break;
       case 'consent': reply(await consent(msg.id)); break;
+      case 'run_goal': reply(await runGoal({ tabId: msg.tabId, goal: msg.goal })); break;
+      case 'stop_goal': activeGoal = null; activeTabId = null; audit('agent_stopped', {}); reply({ ok: true }); break;
+      case 'setLLM': await chrome.storage.local.set({ llmConfig: msg.config }); reply({ ok: true }); break;
       case 'getState': reply(snapshotState()); break;
       default: reply({ error: 'unknown cmd' });
     }
