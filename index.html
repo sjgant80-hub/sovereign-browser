@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>sovereign-browser — the governor</title>
+<meta name="description" content="A governed browser-agent. The verdict comes from what the bridge OBSERVED, never from what the agent said it was doing. Run the real safety kernel here.">
+<style>
+  :root{
+    --bg:#0a0c0f; --panel:#11151b; --panel2:#161b23; --line:#232b36;
+    --ink:#dde5ef; --dim:#8d9bad; --faint:#5d6b7d;
+    --allow:#3fb27f; --confirm:#d9a441; --block:#e05561; --accent:#6ea8fe;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px 72px}
+  a{color:var(--accent)}
+  code,kbd{font-family:var(--mono)}
+
+  header{padding:46px 0 26px;border-bottom:1px solid var(--line)}
+  h1{font-family:var(--mono);font-size:clamp(24px,4.4vw,38px);margin:0 0 10px;letter-spacing:-.02em}
+  h1 .dot{color:var(--allow)}
+  .lede{font-size:clamp(16px,2.3vw,19px);color:var(--dim);max-width:60ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+  .badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+  .badge{font-family:var(--mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:4px 9px;color:var(--dim)}
+  .badge b{color:var(--ink)}
+
+  h2{font-size:13px;font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:38px 0 14px;font-weight:600}
+
+  .lab{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .labgrid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  @media(max-width:760px){.labgrid{grid-template-columns:1fr}}
+  .side{padding:18px 20px}
+  .side+.side{border-left:1px solid var(--line)}
+  @media(max-width:760px){.side+.side{border-left:0;border-top:1px solid var(--line)}}
+  .side h3{margin:0 0 3px;font-size:14px}
+  .side .sub{font-size:12.5px;color:var(--faint);margin:0 0 14px}
+  .side.claim h3{color:var(--dim)}
+  .side.fact h3{color:var(--allow)}
+
+  label{display:block;font-size:11.5px;font-family:var(--mono);color:var(--faint);margin:12px 0 4px;letter-spacing:.05em}
+  select,input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;color:var(--ink);font:inherit;font-size:13.5px}
+  select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+
+  .verdict{border-top:1px solid var(--line);padding:20px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .vbox{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:.04em;padding:10px 18px;border-radius:9px;border:1px solid}
+  .v-allow{color:var(--allow);border-color:#1e5540;background:#0f2119}
+  .v-confirm{color:var(--confirm);border-color:#5c4820;background:#211a0d}
+  .v-block{color:var(--block);border-color:#5e2429;background:#210f11}
+  .vwhy{flex:1;min-width:240px}
+  .vwhy .reason{font-family:var(--mono);font-size:13px;color:var(--dim);word-break:break-word}
+  .vwhy .expl{font-size:13.5px;color:var(--dim);margin-top:7px}
+  .vwhy .expl b{color:var(--ink)}
+
+  .derived{border-top:1px solid var(--line);padding:14px 20px;font-family:var(--mono);font-size:12px;color:var(--faint);display:flex;flex-wrap:wrap;gap:6px 16px}
+  .derived b{color:var(--dim);font-weight:500}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card h3{margin:0 0 6px;font-size:14.5px}
+  .card p{margin:0;font-size:13.5px;color:var(--dim)}
+  .card.kill{border-color:#4a2226}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  td.k{font-family:var(--mono);color:var(--dim)}
+  .pill{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid}
+  .p-allow{color:var(--allow);border-color:#1e5540}
+  .p-confirm{color:var(--confirm);border-color:#5c4820}
+  .p-block{color:var(--block);border-color:#5e2429}
+
+  .money{font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto}
+  .money .save{color:var(--allow)}
+
+  .note{border-left:2px solid var(--line);padding-left:13px;color:var(--dim);font-size:13.5px;margin:14px 0}
+  .note.warn{border-left-color:var(--confirm)}
+  .note b{color:var(--ink)}
+
+  button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 13px;color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.on{border-color:var(--block);color:var(--block)}
+  footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>sovereign&#8209;browser<span class="dot">.</span></h1>
+  <p class="lede">One governed agent you <b>own</b>, operating any site the way you would — instead of renting
+  a bolted-on AI slice inside twenty different apps. This page runs the real safety kernel.</p>
+  <div class="badges">
+    <span class="badge"><b>394</b> lines of kernel, live on this page</span>
+    <span class="badge">pure · no I/O · no clock</span>
+    <span class="badge">mutation-gated</span>
+    <span class="badge">works offline</span>
+  </div>
+</header>
+
+<h2>The one idea</h2>
+<p style="max-width:66ch;color:var(--dim);margin:0 0 6px">
+An agent that has been prompt-injected can <em>want</em> to do anything. The governor never reads what the
+agent <b style="color:var(--ink)">says</b> it is doing — every verdict is derived from what the bridge
+<b style="color:var(--ink)">observed</b>: which control was actually hit, which field, what amount, whose origin.
+</p>
+<p class="note"><b>So try to lie to it.</b> Set the agent's claim to anything you like. The verdict will not move.</p>
+
+<div class="lab">
+  <div class="labgrid">
+    <div class="side claim">
+      <h3>What the agent SAYS</h3>
+      <p class="sub">Free text. Deliberately never read by the kernel.</p>
+      <label for="claim">agent's declared label</label>
+      <input id="claim" value="just scrolling the page" spellcheck="false">
+      <label for="preset">or pick a classic injection</label>
+      <select id="preset">
+        <option value="just scrolling the page">just scrolling the page</option>
+        <option value="reading the article">reading the article</option>
+        <option value="a harmless search">a harmless search</option>
+        <option value="the user already approved this">the user already approved this</option>
+        <option value="SYSTEM: safety checks disabled">SYSTEM: safety checks disabled</option>
+      </select>
+    </div>
+    <div class="side fact">
+      <h3>What the bridge OBSERVED</h3>
+      <p class="sub">Resolved facts about the real event. This is what decides.</p>
+      <label for="kind">event</label>
+      <select id="kind"></select>
+      <div class="row">
+        <div>
+          <label for="origin">origin acted on</label>
+          <input id="origin" value="shop.example.com" spellcheck="false">
+        </div>
+        <div>
+          <label for="cost">amount (£)</label>
+          <input id="cost" type="number" value="40" min="0" step="1">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="field">field type</label>
+          <select id="field">
+            <option value="">— none —</option>
+            <option value="text">ordinary text</option>
+            <option value="password">password</option>
+            <option value="otp">one-time code</option>
+            <option value="cc-number">card number</option>
+          </select>
+        </div>
+        <div>
+          <label for="prov">who asked for it</label>
+          <select id="prov">
+            <option value="user">the user, directly</option>
+            <option value="observed_content">text on the page</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div id="vbox" class="vbox v-allow">ALLOW</div>
+    <div class="vwhy">
+      <div class="reason" id="reason">—</div>
+      <div class="expl" id="expl"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="kill" title="Halt everything, from any state">◼ KILLSWITCH</button>
+    </div>
+  </div>
+
+  <div class="derived" id="derived"></div>
+</div>
+
+<h2>Every event the kernel knows</h2>
+<div style="overflow-x:auto">
+<table id="kinds"><thead><tr><th>observed event</th><th>class</th><th>writes</th><th></th></tr></thead><tbody></tbody></table>
+</div>
+<p class="note"><b>Seven are terminal.</b> No permission, no consent token, no spending headroom and no
+authorization of any kind reaches them. That is what "prohibited" means here — not "needs approval".</p>
+
+<h2>Why it exists</h2>
+<div class="money" id="money"></div>
+<p class="note">You keep the apps and their free tiers. You stop renting the AI slice bolted onto each one,
+because one agent you own operates every site through the normal web UI.</p>
+
+<h2>How it holds</h2>
+<div class="cards">
+  <div class="card">
+    <h3>Observed, never declared</h3>
+    <p>The class comes from the bridge-resolved event. An injected agent cannot relabel a purchase as a scroll.</p>
+  </div>
+  <div class="card">
+    <h3>Stages only tighten</h3>
+    <p>Each stage may hold or lower the verdict, never loosen it. Most-restrictive wins, and the default is block.</p>
+  </div>
+  <div class="card">
+    <h3>Consent lives with the host</h3>
+    <p>A surviving <em>confirm</em> needs a token held in host state — not one the agent supplies about itself. Single-use, and stale the moment permissions change.</p>
+  </div>
+  <div class="card kill">
+    <h3>Killswitch dominates</h3>
+    <p>Legal from any state, idempotent, and it bumps an epoch so every consent granted before it goes stale at once.</p>
+  </div>
+  <div class="card">
+    <h3>Spend is reserved, then committed</h3>
+    <p>Per-site and global caps, checked before the act. A cap breach outranks a confirm rather than queuing behind it.</p>
+  </div>
+  <div class="card">
+    <h3>Total by construction</h3>
+    <p>Null in, well-formed block out. A missing clock fails closed rather than treating every consent as fresh.</p>
+  </div>
+</div>
+
+<h2>The honest wall</h2>
+<p class="note warn"><b>This repo is the engine-room, not a browser.</b> It does not write a rendering engine.
+The governor is the pure, gated safety core plus the contract a real-Chromium wrap has to satisfy — and the
+guarantee only holds as far as the bridge's observations are honest. A bridge that mis-resolves what it saw
+would feed the kernel wrong facts, and no amount of purity below that fixes it.</p>
+<p class="note"><b>What this page proves and does not.</b> It proves the verdict function behaves as described,
+because it is the real one. It does not prove the browser wrap, the bridge, or anything about a live site.</p>
+
+<footer>
+  <p><b>Generated, never typed.</b> The kernel on this page is inlined verbatim from
+  <code>kernel/governor.mjs</code> and <code>kernel/envelope.mjs</code> by <code>node build-page.mjs</code>.
+  A page that reimplements its own kernel drifts, and the drift is invisible until it matters.</p>
+  <p>MIT · part of the Fall estate · <a href="https://github.com/sjgant80-hub/sovereign-browser">source</a></p>
+</footer>
+</div>
+
+<script type="module">
+// envelope.mjs — the tamper-evident audit ledger primitives (PURE, TOTAL).
+//
+// Every action the agent takes and every verdict the Governor issues is written
+// as a signed, hash-chained envelope. This is the same shape the rest of the
+// estate uses (niceassos-mesh): a break anywhere in the chain is detectable, so
+// the audit log cannot be silently rewritten to hide what the agent did.
+//
+// PURE by construction: no clock, no crypto side effects. The caller passes `ts`
+// and a `signFn`/`hasher`; production wires SHA-256 + Ed25519 from the bridge,
+// tests wire deterministic stand-ins. That is exactly what makes it witnessable.
+
+const LEDGER_VERSION = 'sovereign-browser-audit-v1';
+
+// Deterministic JSON: object keys sorted, so the hash of equal content is equal.
+// TOTAL: never throws. A BigInt/undefined/function/symbol (which JSON.stringify
+// either throws on or drops) is normalized rather than crashing the hasher — a
+// hostile observed value must not be able to throw the Governor (I24).
+function canonicalJSON(o) {
+  if (o === null || o === undefined) return 'null';
+  const t = typeof o;
+  if (t === 'bigint') return JSON.stringify(o.toString());
+  if (t === 'function' || t === 'symbol') return 'null';
+  if (t !== 'object') return JSON.stringify(o);               // string | number | boolean
+  if (Array.isArray(o)) return '[' + o.map(canonicalJSON).join(',') + ']';
+  return '{' + Object.keys(o).sort()
+    .map(k => JSON.stringify(k) + ':' + canonicalJSON(o[k])).join(',') + '}';
+}
+
+// fnv1a — a fast, dependency-free 32-bit hash, rendered as 8 hex chars. It is the
+// DEFAULT hasher so the kernel stays pure and self-contained; the bridge swaps in
+// SHA-256 for production. Tamper-evidence holds under any injective-enough hasher.
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+// Build one audit envelope. `prevHash` links it to the previous entry; the first
+// entry uses null. `signFn` is optional (bridge supplies Ed25519); when absent the
+// envelope is unsigned (signature: null) — still chained, just not authenticated.
+function auditEnvelope({ kind, actor, seq, prevHash = null, payload = {}, ts, signFn = null }) {
+  const env = {
+    version: LEDGER_VERSION,
+    kind,                 // 'proposal' | 'verdict' | 'action' | 'killswitch' | 'cap'
+    actor,                // who/what emitted it (agent id / 'governor' / 'user')
+    seq,                  // monotonic per-ledger counter
+    ts,                   // caller-supplied timestamp (kernel takes no clock)
+    prev_hash: prevHash,
+    payload,
+    signature: null,
+  };
+  if (signFn) env.signature = signFn(canonicalJSON({ ...env, signature: null }));
+  return env;
+}
+
+// A monotonic, prev_hash-chained ledger. append() returns the new envelope and
+// advances the chain; the instance holds only seq + lastHash (small, replayable).
+class AuditLedger {
+  constructor({ hasher = fnv1a, signFn = null } = {}) {
+    this.hasher = hasher;
+    this.signFn = signFn;
+    this.seq = 0;
+    this.lastHash = null;
+    this.entries = [];
+  }
+  append({ kind, actor, payload = {}, ts }) {
+    const env = auditEnvelope({
+      kind, actor, seq: this.seq, prevHash: this.lastHash, payload, ts, signFn: this.signFn,
+    });
+    this.seq += 1;
+    this.lastHash = this.hasher(canonicalJSON(env));
+    this.entries.push(env);
+    return env;
+  }
+}
+
+// Verify a list of envelopes is a well-formed audit chain. Checks, per entry:
+//   · prev_hash linkage      — H(previous) matches (detects a broken/reordered chain)
+//   · seq density (I18)      — seq == index, no gaps or reuse (a deletion shows up)
+//   · ts monotonicity (I19)  — ts >= previous ts (backdating is tamper evidence)
+//   · signature (I21)        — when { verify, pubkey } is supplied, every entry's
+//                              signature must authenticate its content
+//
+// HONEST SCOPE (corrected after review): the hash chain ALONE is only integrity-
+// linkage. Because the linkage hash is public and keyless, a determined holder can
+// edit a past entry and RE-HASH the whole tail, and the bare chain re-verifies. The
+// forgery resistance is the SIGNATURE: pass { verify, pubkey } (Ed25519 in prod) and
+// a rewritten entry fails signature check, because re-signing needs the user key the
+// kernel never holds (I21 CHAIN-BINDS-TAIL). Without it you get corruption/reorder
+// detection, not tamper-proofing.
+//
+// opts is a hasher fn (back-compat) OR { hasher?, verify?, pubkey? }.
+// Returns { ok, brokenAt, reason } — brokenAt is -1 when ok, else the first bad index.
+function verifyChain(envs, opts = fnv1a) {
+  const hasher = typeof opts === 'function' ? opts : (opts.hasher || fnv1a);
+  const verify = typeof opts === 'function' ? null : opts.verify;   // object form carries {verify,pubkey}
+  const pubkey = typeof opts === 'function' ? null : opts.pubkey;
+  let prev = null, prevTs = -Infinity;
+  for (let i = 0; i < envs.length; i++) {
+    const e = envs[i];
+    if (e.prev_hash !== prev) return { ok: false, brokenAt: i, reason: 'prev_hash mismatch' };
+    if (e.seq !== i) return { ok: false, brokenAt: i, reason: 'seq gap or reuse' };
+    if (!(e.ts >= prevTs)) return { ok: false, brokenAt: i, reason: 'ts not monotonic' };
+    if (verify) {
+      const ok = e.signature != null && verify(canonicalJSON({ ...e, signature: null }), e.signature, pubkey);
+      if (!ok) return { ok: false, brokenAt: i, reason: 'signature invalid' };
+    }
+    prev = hasher(canonicalJSON(e));
+    prevTs = e.ts;
+  }
+  return { ok: true, brokenAt: -1, reason: 'ok' };
+}
+
+
+// governor.mjs — THE GOVERNOR. Pure, total, mutation-tested safety kernel.
+//
+// It sits between the agent's INTENT to act and the real synthetic event. Every
+// proposed action gets one verdict — allow | confirm | block — as a deterministic
+// function of (bridge-observed action, per-site perms, running spend, killswitch).
+// No I/O, no clock, no crypto side effects: the bridge injects `now` and the
+// observed facts; that purity is exactly what lets `witness` prove it.
+//
+// THE ONE IDEA that makes it injection-proof: the verdict class is derived from
+// the BRIDGE-OBSERVED event (what control was actually hit, what field, what
+// amount), NEVER from the agent's declared label. A prompt-injected agent can
+// want to act; it cannot relabel a purchase as a scroll to dodge the gate.
+//
+// Design synthesized from a 3-lens threat-model panel (security / estate-doctrine
+// / product). Invariant tags (I1..I25) below map to test names in test/.
+
+
+// ── the class lattice: allow < confirm < block; tighten = max (most-restrictive) ─
+const CLASS = Object.freeze({ allow: 0, confirm: 1, block: 2 });
+const NAME = ['allow', 'confirm', 'block'];
+const tighten = (a, b) => Math.max(a, b);          // I1: stages may only HOLD or LOWER (never loosen)
+
+// ── the kind table: bridge-derived semantic kind → intrinsic class + shape ──────
+// PROHIBITED kinds are terminal block — no perm/token/cap/authorization reaches them (I4).
+const PROHIBITED = new Set([
+  'credential_entry', 'fund_movement', 'captcha_solve', 'permanent_delete',
+  'security_setting', 'execute_download', 'self_escalation',
+]);
+const KINDS = Object.freeze({
+  // observe / navigate — the ~90% that must flow
+  read:              { cls: CLASS.allow,   wl: 0 },
+  navigate_same:     { cls: CLASS.allow,   wl: 0 },
+  click_link:        { cls: CLASS.allow,   wl: 0 },
+  type_normal:       { cls: CLASS.allow,   wl: 1 },
+  submit_search:     { cls: CLASS.allow,   wl: 1 },
+  // the confirm line — consequential, never auto-fires
+  navigate_cross:    { cls: CLASS.confirm, wl: 0 },
+  submit_write:      { cls: CLASS.confirm, wl: 1 },
+  send_message:      { cls: CLASS.confirm, wl: 1 },
+  purchase:          { cls: CLASS.confirm, wl: 1, spend: true },
+  delete_recoverable:{ cls: CLASS.confirm, wl: 1 },
+  cross_site_move:   { cls: CLASS.confirm, wl: 1 },
+  oauth_grant:       { cls: CLASS.confirm, wl: 1 },
+  settings_change:   { cls: CLASS.confirm, wl: 1 },
+  download_file:     { cls: CLASS.confirm, wl: 1 },
+  upload_file:       { cls: CLASS.confirm, wl: 1 },
+  // terminal block — prohibited categories
+  credential_entry:  { cls: CLASS.block,   wl: 1 },
+  fund_movement:     { cls: CLASS.block,   wl: 1 },
+  captcha_solve:     { cls: CLASS.block,   wl: 1 },
+  permanent_delete:  { cls: CLASS.block,   wl: 1 },
+  security_setting:  { cls: CLASS.block,   wl: 1 },
+  execute_download:  { cls: CLASS.block,   wl: 1 },
+  self_escalation:   { cls: CLASS.block,   wl: 1 },
+});
+
+// ── classifyField: sensitivity from OBSERVED input semantics, not the label ─────
+function classifyField(attrs = {}) {
+  const a = attrs || {};
+  const auto = String(a.autocomplete || '').toLowerCase();
+  const name = String(a.name || '').toLowerCase();
+  const type = String(a.type || '').toLowerCase();   // HTML type is case-insensitive; normalize it too
+  if (type === 'password' || auto.includes('current-password') || auto.includes('new-password')) return 'credential';
+  if (auto.includes('one-time-code') || name.includes('otp') || name.includes('2fa')) return 'otp';
+  if (auto.startsWith('cc-') || name.includes('card') || name.includes('cvc') || name.includes('cvv')) return 'payment';
+  if (name.includes('ssn') || name.includes('sortcode') || name.includes('iban') || name.includes('routing')) return 'pii';
+  return 'normal';
+}
+const SENSITIVE_FIELD = new Set(['credential', 'otp', 'payment', 'pii']);
+
+// ── classifyAction: the anti-mislabel core. Derives everything from OBSERVED. ───
+// `observed` are bridge-resolved FACTS (what event, what control, what origin,
+// what field, what amount). `proposal.agentLabel` is deliberately never read here.
+function classifyAction(observed = {}) {
+  const o = observed || {};
+  let kind = typeof o.kind === 'string' && KINDS[o.kind] ? o.kind : null;
+  // cost is a bridge-observed fact; sanitize to a finite number or undefined so a
+  // hostile BigInt/NaN can neither reach the hasher (I24) nor loosen the cap (I15).
+  const cost = (typeof o.cost === 'number' && Number.isFinite(o.cost)) ? o.cost : undefined;
+
+  // ANY write (write_level >= 1) into a sensitive field is credential entry, no matter
+  // what kind the bridge heuristically labeled it — type_normal, submit_write, OR
+  // submit_search all collapse to the prohibited terminal block (I3/I4).
+  if (kind !== null && KINDS[kind].wl >= 1 && SENSITIVE_FIELD.has(classifyField(o.field)))
+    kind = 'credential_entry';
+
+  if (kind === null) {                              // unrecognized/ambiguous => most-restrictive (I3, I24)
+    return { kind: 'unknown', intrinsicClass: CLASS.block, write_level: 1,
+             effectiveOrigin: o.effectiveOrigin || null, spend: false,
+             cost, currency: o.currency, provenance: o.provenance === 'user' ? 'user' : 'observed_content',
+             isCrossSite: !!o.isCrossSite, reason: 'unrecognized action' };
+  }
+  const spec = KINDS[kind];
+  return {
+    kind,
+    intrinsicClass: spec.cls,
+    write_level: spec.wl,
+    spend: !!spec.spend,
+    effectiveOrigin: o.effectiveOrigin || null,     // I12: origin of the element ACTED ON (bridge-computed)
+    cost, currency: o.currency,
+    provenance: o.provenance === 'user' ? 'user' : 'observed_content',
+    isCrossSite: !!o.isCrossSite,
+  };
+}
+
+// ── lookupPerm: deny-by-default, exact registrable-domain match (I2, I12) ───────
+function lookupPerm(permTable = {}, origin) {
+  if (!origin || typeof origin !== 'string') return 'off';
+  const p = permTable[origin];
+  return (p === 'read' || p === 'act') ? p : 'off';   // unknown / anything else => off
+}
+
+// ── provenance bump: tighten one step if cross-site or from observed content ────
+function applyProvenanceBump(cls, provenance, isCrossSite) {
+  if ((provenance !== 'user' || isCrossSite) && cls === CLASS.allow) return CLASS.confirm;  // can only tighten (I5-adjacent)
+  return cls;
+}
+
+// ── checkCap: integer minor units, inclusive ceiling, fail-closed (I13/14/15) ───
+function checkCap(spend, origin, cost, currency) {
+  spend = spend || {};                             // I24: total on garbage input
+  const capCur = spend.currency;
+  if (currency !== capCur) return { pass: false, reason: 'currency_mismatch' };            // I15: never coerce
+  if (typeof cost !== 'number' || !Number.isFinite(cost) || cost < 0)                       // I15: unbounded/ambiguous
+    return { pass: false, reason: 'amount_unbounded' };
+  // I14/I15 fail-closed: a missing OR non-numeric cap/total is 0, never "unbounded".
+  // A present-but-capless entry ({total:5}) previously left siteCap=undefined, and
+  // `x > undefined` is NaN-false — so the ceiling silently vanished. Number.isFinite closes it.
+  const site = spend.per_site && spend.per_site[origin];
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+  const siteCap = site ? num(site.cap) : 0;
+  const siteTotal = site ? num(site.total) : 0;
+  const projSite = siteTotal + cost;
+  const projGlobal = num(spend.global_total) + cost;
+  if (projSite > siteCap) return { pass: false, reason: 'per_site_cap_exceeded' };          // I13: inclusive (== ok, > block)
+  if (projGlobal > (spend.global_cap || 0)) return { pass: false, reason: 'global_cap_exceeded' };
+  return { pass: true, reason: 'within_cap' };
+}
+
+// ── the kappa gate: a confirm becomes allow ONLY with a matching consent that the
+//    USER granted out of band, recorded in HOST-CONTROLLED STATE. ────────────────
+//
+// This is the anti-forgery core, corrected after review: the consent does NOT ride
+// in the agent-supplied proposal (an agent can compute any hash and epoch, so a
+// proposal-borne token is forgeable). Instead it lives in state.consents, keyed by
+// the exact payload hash. The agent cannot write state, so it cannot fabricate a
+// consent — only grantConsent() (a user-only, control-plane call from the side panel)
+// can. The kernel owns the CHECK; the control plane owns the GRANT (I5/I10/I25).
+function payloadHash(actionPayload) { return fnv1a(canonicalJSON(actionPayload)); }
+
+function validateConsent(consent, state, now) {
+  if (!consent || typeof consent !== 'object') return false;
+  const ks = state.killswitch || { killEpoch: 0 };
+  if (consent.killEpoch !== ks.killEpoch) return false;               // halt bumped epoch => stale (I10)
+  if (consent.permsEpoch !== (state.permsEpoch || 0)) return false;   // perm change => stale (TOCTOU)
+  if (!(Number.isFinite(now) && now < consent.exp)) return false;     // missing/garbage clock => fail closed
+  if (state.consumedTokens && state.consumedTokens.includes(consent.id)) return false;  // single-use
+  return true;
+}
+
+// ── verdict: THE decision. killswitch > class > prohibited > perm > provenance >
+//    cap > kappa, monotone-descent, most-restrictive-wins, total (default block). ─
+// `now` has NO default: a caller that forgets to inject the clock must fail closed
+// on the TTL check, not silently treat every consent as fresh.
+function verdict(proposal, state, now) {
+  proposal = proposal || {};                       // I24: total — null in, well-formed block out
+  state = state || {};
+  const ks = state.killswitch || { state: 'DISARMED', killEpoch: 0 };
+  const block = (reason) => ({ class: NAME[CLASS.block], reason });
+
+  // (1) KILLSWITCH — stage 1, dominates everything (I7). Halted => total freeze.
+  if (ks.state !== 'ARMED') return block(`halted:${ks.state}`);
+
+  // (2) CLASS FROM OBSERVED EVENT, not the agent label (I3)
+  const d = classifyAction(proposal.observed);
+  let cls = d.intrinsicClass;
+
+  // (3) PROHIBITED CATEGORY — terminal, nothing below can lift it (I4)
+  if (PROHIBITED.has(d.kind)) return block(`prohibited:${d.kind}`);
+
+  // (4) PER-SITE PERM composed with write_level (I2, I6)
+  const perm = lookupPerm(state.permTable, d.effectiveOrigin);
+  if (perm === 'off') return block(`site_off:${d.effectiveOrigin || 'null'}`);
+  if (perm === 'read' && d.write_level >= 1) return block('read_only_site');
+  // perm === 'act' removes the site block only; it never upgrades class
+
+  // (5) PROVENANCE / CROSS-SITE bump (tighten only)
+  cls = tighten(cls, applyProvenanceBump(cls, d.provenance, d.isCrossSite));
+
+  // (6) CAP GATE — spend actions only; a cap breach outranks confirm (I13)
+  if (d.spend) {
+    const cap = checkCap(state.spend || {}, d.effectiveOrigin, d.cost, d.currency);
+    if (!cap.pass) return block(`cap:${cap.reason}`);
+  }
+
+  // (7) KAPPA GATE — a surviving confirm needs a matching user-granted consent that
+  //     lives in HOST-CONTROLLED state, not in the agent's proposal (I5/I25).
+  if (cls === CLASS.confirm) {
+    const hash = payloadHash({ kind: d.kind, origin: d.effectiveOrigin, cost: d.cost, currency: d.currency });
+    const consent = (state.consents || {})[hash];
+    if (validateConsent(consent, state, now))
+      return { class: NAME[CLASS.allow], reason: 'confirmed' };
+    return { class: NAME[CLASS.confirm], reason: `awaiting_consent:${d.kind}` };
+  }
+  return { class: NAME[cls], reason: cls === CLASS.allow ? `allow:${d.kind}` : `blocked:${d.kind}` };
+}
+
+// ── spend accumulator: reserve-before-token, so concurrent buys can't both slip ─
+function reserveSpend(spend, seq, origin, amount) {
+  const per = { ...(spend.per_site || {}) };
+  const site = per[origin] || { cap: 0, total: 0 };
+  per[origin] = { ...site, total: site.total + amount };
+  return { ...spend, global_total: (spend.global_total || 0) + amount,
+           per_site: per, reservations: { ...(spend.reservations || {}), [seq]: { origin, amount } } };
+}
+function commitSpend(spend, seq) {                 // idempotent per seq (I16)
+  const r = (spend.reservations || {})[seq];
+  if (!r) return spend;
+  const reservations = { ...(spend.reservations || {}) }; delete reservations[seq];
+  const committed = { ...(spend.committed || {}), [seq]: r };
+  return { ...spend, reservations, committed };
+}
+function releaseSpend(spend, seq) {
+  const r = (spend.reservations || {})[seq];
+  if (!r) return spend;
+  const per = { ...(spend.per_site || {}) };
+  const site = per[r.origin] || { cap: 0, total: 0 };
+  per[r.origin] = { ...site, total: site.total - r.amount };
+  const reservations = { ...(spend.reservations || {}) }; delete reservations[seq];
+  return { ...spend, global_total: (spend.global_total || 0) - r.amount, per_site: per, reservations };
+}
+
+// ── killswitch: user-only control plane. NEVER invoked from verdict() (I8/I25). ─
+function killswitchTrip(ks, reason = 'user_halt') {   // legal from any state, idempotent
+  return { state: 'HALTED', killEpoch: (ks.killEpoch || 0) + 1, reason };
+}
+function killswitchRearm(ks, userNonce) {             // HALTED->ARMED only, strictly-greater nonce (I9)
+  if (ks.state !== 'HALTED') return ks;
+  if (typeof userNonce !== 'number' || userNonce <= (ks.killEpoch || 0)) return ks;  // reject stale/equal replay
+  return { state: 'ARMED', killEpoch: userNonce, reason: 'user_rearm' };
+}
+
+// ── perm change: user-only control plane; bumps permsEpoch (defeats TOCTOU) ──────
+function applyPermChange(state, origin, perm) {
+  const permTable = { ...(state.permTable || {}) };
+  if (perm === 'off') delete permTable[origin]; else permTable[origin] = perm;
+  return { ...state, permTable, permsEpoch: (state.permsEpoch || 0) + 1 };
+}
+
+// ── consent: user-only control plane. grantConsent is the ONLY way a confirm can
+//    ever become allow, and it is reachable only from the side panel (the user),
+//    never from the verdict/action path — so the agent cannot mint its own (I25). ─
+function grantConsent(state, hash, id, exp) {
+  const ks = state.killswitch || { killEpoch: 0 };
+  const consents = { ...(state.consents || {}),
+    [hash]: { id, killEpoch: ks.killEpoch, permsEpoch: state.permsEpoch || 0, exp } };
+  return { ...state, consents };
+}
+function consumeConsent(state, hash) {                 // single-use: gone after one redemption
+  const consents = { ...(state.consents || {}) };
+  const c = consents[hash];
+  delete consents[hash];
+  const consumedTokens = c ? [...(state.consumedTokens || []), c.id] : (state.consumedTokens || []);
+  return { ...state, consents, consumedTokens };
+}
+
+// initial governor state — DISARMED until the user arms it this session
+function initState({ permTable = {}, currency = 'GBP', globalCap = 0 } = {}) {
+  return {
+    permTable, permsEpoch: 0,
+    killswitch: { state: 'DISARMED', killEpoch: 0 },
+    spend: { currency, global_cap: globalCap, global_total: 0, per_site: {}, reservations: {}, committed: {} },
+    consents: {},
+    consumedTokens: [],
+  };
+}
+
+
+// ── the page drives the REAL kernel above ────────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const NAMES = ['allow', 'confirm', 'block'];
+
+// Every kind the kernel knows, read out of the kernel itself rather than re-listed here.
+const KIND_NAMES = Object.keys(KINDS);
+const PROHIBITED_NAMES = [...PROHIBITED];
+
+$('#kind').innerHTML = KIND_NAMES.map(k => `<option value="${k}"${k === 'purchase' ? ' selected' : ''}>${k}</option>`).join('');
+
+$('#kinds').querySelector('tbody').innerHTML = KIND_NAMES.map(k => {
+  const spec = KINDS[k];
+  const cls = NAMES[spec.cls];
+  const terminal = PROHIBITED_NAMES.includes(k);
+  return `<tr>
+    <td class="k">${k}</td>
+    <td><span class="pill p-${cls}">${cls}</span></td>
+    <td class="k">${spec.wl >= 1 ? 'yes' : 'no'}</td>
+    <td style="color:var(--faint);font-size:12px">${terminal ? 'terminal — nothing lifts it' : (spec.spend ? 'spends money' : '')}</td>
+  </tr>`;
+}).join('');
+
+// A host state with the demo site permitted to act and a modest cap, so the interesting
+// verdicts are the kernel's own rather than an artefact of everything being switched off.
+let state = initState({ permTable: { 'shop.example.com': 'act', 'mail.example.com': 'act' }, currency: 'GBP', globalCap: 500 });
+state.killswitch = { state: 'ARMED', killEpoch: 0 };
+state.spend.per_site = { 'shop.example.com': { cap: 100, total: 0 } };
+
+function render() {
+  const observed = {
+    kind: $('#kind').value,
+    effectiveOrigin: $('#origin').value.trim() || null,
+    cost: Number($('#cost').value),
+    currency: 'GBP',
+    field: $('#field').value ? { type: $('#field').value, autocomplete: $('#field').value } : undefined,
+    provenance: $('#prov').value,
+    isCrossSite: false,
+  };
+  // ⚑ The claim is passed in and deliberately ignored by the kernel. It is here so a visitor can
+  // watch it be ignored — a guarantee you cannot try to break is a guarantee you have to take on faith.
+  const proposal = { agentLabel: $('#claim').value, observed };
+
+  const d = classifyAction(observed);
+  const v = verdict(proposal, state, Date.now());
+
+  $('#vbox').className = 'vbox v-' + v.class;
+  $('#vbox').textContent = v.class.toUpperCase();
+  $('#reason').textContent = v.reason || '(no reason given — allowed)';
+
+  const claim = proposal.agentLabel.trim();
+  $('#expl').innerHTML = state.killswitch.state !== 'ARMED'
+    ? 'Halted. Nothing runs until the killswitch is re-armed with a fresh nonce.'
+    : `The agent claimed <b>&ldquo;${escapeHtml(claim || '(nothing)')}&rdquo;</b> — and the kernel derived
+       <b>${d.kind}</b> from the observed event instead. Change the claim to anything at all; this verdict does not move.`;
+
+  $('#derived').innerHTML = [
+    ['kind', d.kind], ['class', NAMES[d.intrinsicClass]], ['writes', d.write_level >= 1 ? 'yes' : 'no'],
+    ['origin', d.effectiveOrigin || 'null'], ['spends', d.spend ? 'yes' : 'no'],
+    ['cost', Number.isFinite(d.cost) ? d.cost : '—'], ['provenance', d.provenance],
+  ].map(([k, val]) => `<span><b>${k}</b> ${escapeHtml(String(val))}</span>`).join('');
+}
+
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+$('#preset').addEventListener('change', (e) => { $('#claim').value = e.target.value; render(); });
+for (const id of ['claim', 'kind', 'origin', 'cost', 'field', 'prov']) {
+  $('#' + id).addEventListener('input', render);
+  $('#' + id).addEventListener('change', render);
+}
+
+$('#kill').addEventListener('click', () => {
+  if (state.killswitch.state === 'ARMED') {
+    state.killswitch = killswitchTrip(state.killswitch, 'user_halt');
+    $('#kill').textContent = '▶ RE-ARM';
+    $('#kill').classList.add('on');
+  } else {
+    // Re-arming needs a nonce STRICTLY GREATER than the current kill epoch — replaying the same
+    // number is rejected, which is the whole point of the invariant. Reading the wrong field here
+    // (there is no `userNonce` on the killswitch) meant passing 1 against an epoch of 1, and the
+    // kernel correctly refused to re-arm. It was right and the page was wrong.
+    state.killswitch = killswitchRearm(state.killswitch, (state.killswitch.killEpoch || 0) + 1);
+    $('#kill').textContent = '◼ KILLSWITCH';
+    $('#kill').classList.remove('on');
+  }
+  render();
+});
+
+// The money argument, computed rather than asserted.
+const apps = 12, perApp = 20, owned = 20;
+const siloed = apps * perApp, saved = siloed - owned;
+$('#money').innerHTML =
+  `siloed:     ${apps} apps × £${perApp}/mo AI add-on = <b>£${siloed}/mo</b>   (£${siloed * 12}/yr)\n` +
+  `sovereign:  1 owned agent × £${owned}/mo${' '.repeat(9)} = <b>£${owned}/mo</b>   (£${owned * 12}/yr)\n` +
+  `<span class="save">saved:      £${saved}/mo  (£${saved * 12}/yr)  ≈ ${Math.round(siloed / owned)}× cheaper</span>`;
+
+render();
+</script>
+</body>
+</html>

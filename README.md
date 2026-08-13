@@ -1,5 +1,13 @@
 # sovereign-browser
 
+### ▶ **https://sjgant80-hub.github.io/sovereign-browser/**
+
+**The page runs the real governor.** Not a description of it — `kernel/governor.mjs` and
+`kernel/envelope.mjs` are inlined verbatim by `node build-page.mjs`, so what you exercise in the
+browser is byte-for-byte the code the mutation gate proved. Tell the agent to claim it is "just
+scrolling the page", then set the observed event to a purchase, and watch the claim be ignored.
+
+
 **Your governed AI, running alongside you in a browser you own, operating any
 site the way you would — so you stop paying twenty apps for twenty siloed
 bolted-on AIs and own ONE agent that does the AI-work across all of them.**
