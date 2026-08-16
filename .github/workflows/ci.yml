@@ -22,3 +22,15 @@ jobs:
         run: npm run demo:agent
       - name: Desktop wiring smoke (shared page bridge, no Electron/GUI)
         run: node desktop/smoke.js
+
+      # The live page inlines the real kernel. If someone edits index.html by hand, the page
+      # people actually use stops being the code the gate proved — and nothing would say so.
+      - name: Live page is still generated from the kernel (no hand edits)
+        run: |
+          node build-page.mjs
+          git diff --exit-code index.html
+
+      # The README prints a mutation score. A typed score decays silently; this fails the
+      # build the moment the paragraph and a real run disagree.
+      - name: README gate status matches a real run
+        run: node konomi/sync-readme.mjs --check

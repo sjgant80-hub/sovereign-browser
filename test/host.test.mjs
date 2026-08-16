@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveObserved } from '../host/observe.mjs';
+import { verdict } from '../kernel/governor.mjs';
 import { makeHost } from '../host/governor-host.mjs';
 import { mockLLM } from '../agent/llm.mjs';
 
@@ -33,11 +34,66 @@ test('deriveObserved classifies a click by the control it lands on', () => {
 test('deriveObserved returns unknown for an unrecognized op (Governor will block)', () => {
   assert.equal(deriveObserved(null, { op: 'teleport' }, 'a.com').kind, 'unknown');
 });
-test('deriveObserved takes cost from the OBSERVED item, falling back to the intent', () => {
+// ⚑ This test used to be titled "…falling back to the intent" and asserted that when the
+// page showed no price, the cost came from the agent's own proposal — pinning the hole as
+// correct behaviour. A suite that asserts the defect will never report it. The cap gate is
+// checked against this number; the agent must not be the one who supplies it.
+test('deriveObserved takes cost ONLY from the observed item, never from the agent', () => {
   const O = 'shop.com';
   assert.equal(deriveObserved({ text: 'Buy', isSubmit: true, cost: 1299, origin: O }, { op: 'click', cost: 5 }, O).cost, 1299);
-  assert.equal(deriveObserved({ text: 'Buy', isSubmit: true, origin: O }, { op: 'click', cost: 5 }, O).cost, 5);
+  assert.equal(deriveObserved({ text: 'Buy', isSubmit: true, origin: O }, { op: 'click', cost: 5 }, O).cost, undefined,
+    'the agent declared a price for an item the page never priced');
   assert.equal(deriveObserved({ text: 'Buy', isSubmit: true, origin: O }, { op: 'click' }, O).cost, undefined);
+});
+
+test('an unpriced purchase reaches the Governor unbounded, and is blocked', () => {
+  const O = 'shop.com';
+  const observed = deriveObserved({ text: 'Buy now', origin: O }, { op: 'click', cost: 1, provenance: 'user' }, O);
+  assert.equal(observed.kind, 'purchase');
+  const v = verdict({ observed }, {
+    permTable: { [O]: 'act' }, killswitch: { state: 'ARMED', killEpoch: 1 },
+    spend: { currency: 'GBP', global_cap: 100000, global_total: 0, per_site: { [O]: { cap: 100000, total: 0 } } },
+  }, 1);
+  assert.equal(v.class, 'block');
+  assert.equal(v.reason, 'cap:amount_unbounded');
+});
+
+// ── the purchase vocabulary: a price is a fact, a label is a word ──────────────
+test('a priced control is a purchase whatever the button is called', () => {
+  const O = 'shop.com';
+  // None of these say buy/pay/checkout. Each carries a price the bridge read off the page.
+  for (const text of ['Get it now', 'Continue', 'Complete', 'Go', '']) {
+    const o = deriveObserved({ text, cost: 4999, origin: O }, { op: 'click' }, O);
+    assert.equal(o.kind, 'purchase', `"${text}" with a £49.99 price on it was not treated as a purchase`);
+    assert.equal(o.cost, 4999);
+  }
+});
+
+test('the purchase vocabulary covers the words checkout buttons actually use', () => {
+  const O = 'shop.com';
+  for (const text of ['Place order', 'Complete purchase', 'Confirm and pay', 'Subscribe',
+                      'Donate', 'Top up', 'Add to basket', 'Proceed to checkout', 'Buy now',
+                      'Pre-order', 'Reserve', 'Book now', 'Authorise payment']) {
+    assert.equal(deriveObserved({ text, origin: O }, { op: 'click' }, O).kind, 'purchase', `"${text}" was not read as a purchase`);
+  }
+});
+
+test('the purchase vocabulary does not fire on ordinary reading links', () => {
+  const O = 'shop.com';
+  // Every one of these matched the old unanchored alternation. Each unnecessary confirm is
+  // one more prompt teaching the user to approve without looking.
+  for (const text of ['Marketplace', 'Replace this item', 'Order history', 'Sort order',
+                      'Payment history', 'Placeholder', 'Parent company', 'Current offers']) {
+    assert.equal(deriveObserved({ text, origin: O }, { op: 'click' }, O).kind, 'click_link', `"${text}" was read as a purchase`);
+  }
+});
+
+test('a zero or nonsense price is not a purchase on its own', () => {
+  const O = 'shop.com';
+  for (const cost of [0, -100, NaN, Infinity, '1299', null]) {
+    assert.equal(deriveObserved({ text: 'Continue', cost, origin: O }, { op: 'click' }, O).kind, 'click_link',
+      `cost ${String(cost)} was treated as a price`);
+  }
 });
 test('deriveObserved defaults provenance to observed_content unless the user marked it', () => {
   assert.equal(deriveObserved(null, { op: 'read' }, 'a.com').provenance, 'observed_content');

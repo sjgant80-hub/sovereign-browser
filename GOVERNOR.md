@@ -59,9 +59,11 @@ Class lattice `allow ‹ confirm ‹ block`; every stage may only *hold or tight
 
 1. **Confused-deputy via injected page content** — page text says "user pre-authorized this". Defense: perms/amounts/consent come only from control-plane + OOB user input; page content is data, never authority. Class is derived from the action, so send/spend/delete stay confirm regardless (I3/I8).
 2. **Action-class downgrade (mislabeling)** — label a purchase as `scroll`. Defense: class derived from the observed control (I3); a click landing on a checkout button resolves to purchase.
+   ⚑ This held in the kernel and leaked twice outside it. The word list that recognised a checkout button did not contain the words many checkout buttons use, so "Get it now" resolved to an ordinary link and was allowed outright; and the bridge that carries the verdict to the page read a field the kernel does not return, so every verdict — block included — fell through to dispatch. A defence stated correctly at the centre is worth nothing if the edges do not honour it. Both edges are now inside the mutation gate.
 3. **Cap race / double-spend** — two near-simultaneous buys. Defense: single-writer, reserve-before-token (I17); the second sees the first's reservation.
 4. **Cap-split / structuring** — four £60 buys under a £200 cap. Defense: cap on the cumulative running total (I13/I16); the crossing chunk blocks.
 5. **Amount spoofing** — claim £1 for a £500 cart, or an unbounded amount. Defense: bridge-observed amount; unbounded ⇒ block (I15).
+   ⚑ The observe step used to fall back to the agent's own figure whenever the page showed no price, so the number the cap is checked against came from the party the cap restrains. The fallback is gone: no observed price, no number, cap blocks.
 6. **Off-domain pivot / lookalike domain** — get `act` on benign.com, then act on bank.com. Defense: exact registrable-domain, no inheritance (I12); the cross-origin nav is itself confirm-gated.
 7. **Frame/embedded-widget escape** — act on a third-party iframe under an allowed top-frame. Defense: acting origin is the element's frame, not the top-frame (I12).
 8. **Cross-origin exfiltration** — read a 2FA code on A, type it into attacker form B. Defense: cross-site data move is its own confirm class, triggered by the origin boundary.

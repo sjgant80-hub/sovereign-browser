@@ -8,6 +8,7 @@ import {
 } from '../kernel/governor.mjs';
 import { runAgent } from '../agent/loop.mjs';
 import { mockLLM } from '../agent/llm.mjs';
+import { deriveObserved as observe } from '../host/observe.mjs';
 
 let clock = 1_700_000_000_000; const now = () => (clock += 1000);
 
@@ -15,28 +16,30 @@ let clock = 1_700_000_000_000; const now = () => (clock += 1000);
 let gov = applyPermChange({ ...initState({ currency: 'GBP', globalCap: 20000 }), killswitch: { state: 'ARMED', killEpoch: 1 } }, 'shop.example', 'act');
 gov = { ...gov, spend: { ...gov.spend, per_site: { 'shop.example': { cap: 5000, total: 0 } } } };
 
-// a fake page the "bridge" observes
+// a fake page the "bridge" observes. `cost` on the checkout control is a PAGE fact —
+// the price the bridge scraped off that button — not a number the agent supplied.
 const PAGE = {
+  origin: 'shop.example',
   url: 'https://shop.example/widgets', title: 'Widgets — shop.example', text: 'Blue widget £12.99. Returns within 30 days.',
   items: [
     { ref: 0, text: 'Returns policy', href: '/returns', origin: 'shop.example' },
     { ref: 1, text: 'Search', field: { type: 'text', name: 'q' }, origin: 'shop.example' },
-    { ref: 2, text: 'Checkout £12.99', isSubmit: true, origin: 'shop.example' },
+    { ref: 2, text: 'Checkout £12.99', isSubmit: true, origin: 'shop.example', cost: 1299 },
   ],
 };
 const see = async () => PAGE;
 
-// the bridge: derive OBSERVED facts from (item + intent), then the Governor decides
-function deriveObserved(intent) {
-  const it = typeof intent.ref === 'number' ? PAGE.items.find(i => i.ref === intent.ref) : null;
-  const base = { effectiveOrigin: (it && it.origin) || 'shop.example', provenance: intent.provenance || 'user', field: it && it.field };
-  if (intent.op === 'read' || intent.op === 'scroll') return { ...base, kind: 'read' };
-  if (intent.op === 'type') return { ...base, kind: 'type_normal' };
-  if (intent.op === 'navigate') return { ...base, kind: 'navigate_same' };
-  if (it && /pay|buy|checkout|order/i.test(it.text)) return { ...base, kind: 'purchase', cost: 1299, currency: 'GBP' };
-  if (it && it.isSubmit) return { ...base, kind: 'submit_write' };
-  return { ...base, kind: 'click_link' };
-}
+// the bridge: derive OBSERVED facts from (item + intent), then the Governor decides.
+//
+// ⚑ This demo used to carry its OWN copy of that derivation — a different purchase
+// regex, a hardcoded £12.99 applied to whatever matched, and none of the sensitive-field
+// or cross-origin branches. So the demo that exists to show the safety story was not
+// running the shipped safety path: host/observe.mjs could have rotted to nothing and this
+// still printed its confident ✓, because it was grading its own private copy. The two
+// were already apart — the shipped regex had `place|purchase`, this one did not. It now
+// calls the real one, which is the only version of this demo that is evidence.
+const deriveObserved = (intent) =>
+  observe(typeof intent.ref === 'number' ? PAGE.items.find(i => i.ref === intent.ref) : null, intent, PAGE.origin);
 let pending = null;
 async function propose(intent) {                    // runAgent calls propose(intent) directly
   const observed = deriveObserved(intent);

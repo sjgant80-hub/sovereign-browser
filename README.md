@@ -67,10 +67,12 @@ The verdict is one pure function composing seven stages, most-restrictive-wins:
 `killswitch › event-class › prohibited › per-site-perm › provenance-bump › cap › kappa`.
 Full spec + the 15 bypass classes it defends: [`GOVERNOR.md`](GOVERNOR.md).
 
-**Gate status** — 108 tests; mutation gate CLEAN on every pure module —
-`kernel/governor.mjs` 79/80 (+1 reviewed equivalent), `kernel/envelope.mjs` 18/18,
-`agent/tools.mjs` 25/25, `host/observe.mjs` 21/21; fuzz battery: the safety kernel
-never throws on garbage input (I24). `npm run gate` reproduces it.
+<!-- GATE-STATUS:BEGIN -->
+**Gate status** — 153 tests; mutation gate CLEAN on every gated module —
+`kernel/governor.mjs` 79/80 (+1 reviewed equivalent), `kernel/envelope.mjs` 18/18, `agent/tools.mjs` 25/25, `host/observe.mjs` 26/26, `bridge/cdp-bridge.js` 9/9, `page/agent-dom.js` 34/34; fuzz battery: the safety kernel never throws on garbage input (I24).
+`npm run gate` reproduces it, and `node konomi/sync-readme.mjs --check` fails the build
+if this paragraph and a real run ever disagree.
+<!-- GATE-STATUS:END -->
 
 **Hardened by adversarial review.** The design came from a three-lens threat-model
 panel; the implementation was then attacked by a five-lens code review that
@@ -85,7 +87,8 @@ named regression test. Details: [`GOVERNOR.md`](GOVERNOR.md).
 | Governor kernel (`kernel/governor.mjs`) | **real, pure, witness-gated** |
 | Audit ledger (`kernel/envelope.mjs`) | **real, pure, witness-gated** |
 | LLM agent loop (`agent/`) | **real** — SEE→THINK→PROPOSE→ACT, pure core witness-gated, BYOK model client |
-| SEE→ACT contract (extension `content.js` / `bridge/cdp-bridge.js`) | **real** — content script in your Chrome, or a CDP client |
+| Page observer (`page/agent-dom.js`) | **real, witness-gated** — the facts the Governor judges on: what a control is, and what it costs |
+| SEE→ACT contract (extension `content.js` / `bridge/cdp-bridge.js`) | **real, witness-gated** — content script in your Chrome, or a CDP client |
 | SaaS-tax demo (`demo/saas-tax.mjs`) | **real, runnable** — governed multi-site task + the money math |
 | Desktop "own browser" (`desktop/`) | **real Electron app** — bundles Chromium, tabs + address bar + rail, drives pages via the shared bridge |
 | Rendering engine | **wrapped, not written** — Chromium, driven by the extension or the Electron app |

@@ -8,8 +8,11 @@
 import { runMutations, fuzz } from './witness.mjs';
 import { verdict, classifyAction, checkCap, lookupPerm } from '../kernel/governor.mjs';
 
-const TEST = ['node', '--test', 'test/governor.test.mjs', 'test/envelope.test.mjs', 'test/agent.test.mjs', 'test/host.test.mjs'];
-const FILES = ['kernel/governor.mjs', 'kernel/envelope.mjs', 'agent/tools.mjs', 'host/observe.mjs'];
+const TEST = ['node', '--test', 'test/governor.test.mjs', 'test/envelope.test.mjs', 'test/agent.test.mjs', 'test/host.test.mjs', 'test/bridge.test.mjs', 'test/page-dom.test.mjs'];
+// bridge/cdp-bridge.js is in this list now. It was not, which is how its one
+// load-bearing line — the dispatch gate — sat wrong with no test and no mutant.
+// The mutation gate only covers files someone remembered to name.
+const FILES = ['kernel/governor.mjs', 'kernel/envelope.mjs', 'agent/tools.mjs', 'host/observe.mjs', 'bridge/cdp-bridge.js', 'page/agent-dom.js'];
 
 let clean = true;
 

@@ -90,6 +90,58 @@
 </style>
 </head>
 <body>
+<!-- fallworld-wayback: the way back out of this room. -->
+<a href="https://sjgant80-hub.github.io/fallworld/" id="fallworld-wayback"
+   aria-label="Back to Fall World"
+   style="position:fixed;left:14px;top:14px;z-index:2147483000;display:inline-flex;gap:.4em;
+          align-items:center;text-decoration:none;font:600 12px/1 ui-sans-serif,system-ui,sans-serif;
+          letter-spacing:.04em;color:#e6cd72;background:rgba(12,10,9,.86);border:1px solid #4a4030;
+          border-radius:999px;padding:8px 13px;backdrop-filter:blur(6px)">
+  <span aria-hidden="true">&#9674;</span><span>Fall World</span>
+</a>
+<script>
+/* Sit in the first corner that is not already occupied. Wrapped in try/catch and left where it is on
+   any failure: a way home that is slightly in the way beats no way home. */
+(function(){
+  /* Four corners was not enough: on a page with a header AND a footer AND a corner widget,
+     every corner is taken and the strip has to sit on something. These are the same four corners
+     first, then the same four nudged clear of a typical header or footer row. */
+  var CORNERS=[{left:'14px',top:'14px'},{right:'14px',bottom:'14px'},
+               {left:'14px',bottom:'14px'},{right:'14px',top:'14px'},
+               {left:'14px',top:'72px'},{right:'14px',top:'72px'},
+               {left:'14px',bottom:'72px'},{right:'14px',bottom:'72px'}];
+  function place(){
+    try{
+      var a=document.getElementById('fallworld-wayback'); if(!a) return;
+      var best=null;
+      for(var i=0;i<CORNERS.length;i++){
+        a.style.left=a.style.right=a.style.top=a.style.bottom='';
+        for(var k in CORNERS[i]) a.style[k]=CORNERS[i][k];
+        var r=a.getBoundingClientRect(), n=0;
+        var els=document.querySelectorAll('button,a,input,select,textarea,[onclick],[role=button]');
+        for(var j=0;j<els.length;j++){
+          if(els[j]===a) continue;
+          var b=els[j].getBoundingClientRect();
+          if(!b.width||!b.height) continue;
+          if(!(b.right<r.left||b.left>r.right||b.bottom<r.top||b.top>r.bottom)) n++;
+        }
+        if(n===0) return;                 /* clear — stay here */
+        if(best===null||n<best.n) best={i:i,n:n};
+      }
+      /* nowhere is clear: take the least crowded rather than the last one tried */
+      a.style.left=a.style.right=a.style.top=a.style.bottom='';
+      for(var k2 in CORNERS[best.i]) a.style[k2]=CORNERS[best.i][k2];
+    }catch(e){}
+  }
+  /* Several rooms draw their own header with JS, so a single early measurement sees an empty page
+     and happily settles on top of a logo that has not arrived yet. Re-measure on a few beats. */
+  function schedule(){[0,400,1200,3000].forEach(function(t){setTimeout(place,t)})}
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',schedule);
+  else schedule();
+  window.addEventListener('resize',function(){setTimeout(place,150)});
+})();
+</script>
+
 <div class="wrap">
 
 <header>
